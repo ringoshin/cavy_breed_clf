@@ -1,0 +1,359 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Aug  8 02:27:36 2019
+
+@author: ringoshin
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pickle
+from itertools import cycle
+from scipy import interp
+
+from sklearn.metrics import (classification_report, confusion_matrix, 
+                             precision_recall_curve, roc_curve, auc, 
+                             roc_auc_score, f1_score, accuracy_score)
+from sklearn.model_selection import (train_test_split, cross_val_score,
+                                     cross_validate, StratifiedKFold, KFold)
+from sklearn.utils import shuffle
+
+
+def Vanilla_ML_Run(clf_list, X_train, y_train):
+    print(">> Starting %d vanilla ML runs" %(len(clf_list)))
+    print()
+    
+    new_clf_list = {}
+    for clf_name, clf in clf_list.items():
+        print(" > Training", clf_name)
+        clf.fit(X_train, y_train)
+        new_clf_list[clf_name] = clf
+    
+    print()
+    return new_clf_list
+
+
+def Vanilla_ML_Run_CV(clf_list, X, y, n_splits=5):
+    print(">> Starting %d vanilla ML runs" %(len(clf_list)))
+    print()
+    
+    for clf_name, clf in clf_list.items():
+        print(" > Cross-Validation of {} with {} folds".format(clf_name, n_splits))
+        skf = StratifiedKFold(n_splits=n_splits)
+        scores = cross_validate(clf, X, y, cv=skf,
+                                 scoring=('balanced_accuracy', 'f1_macro', 'f1_weighted',
+                                          'recall_macro', 'recall_weighted'))
+    
+    for score_name, score_value in scores.items():
+        print(" >", score_name)
+        print("   >", score_value)
+    print()    
+    return scores
+
+
+def Predict_and_Report(clf, X_val, y_val, target_names):
+    y_pred = clf.predict(X_val)
+    clf_acc = accuracy_score(y_val, y_pred)
+    clf_report = classification_report(y_val, y_pred, target_names=target_names)
+    cf_matrix = confusion_matrix(y_val.argmax(axis=1), y_pred.argmax(axis=1))
+    #print(clf_report)
+    #print(cf_matrix)
+    #print()
+    return (clf_acc, clf_report, cf_matrix)
+
+
+def Vanilla_ML_Predict(clf_list, X_val, y_val, target_names):
+    print(">> Starting %d vanilla ML predictions" %(len(clf_list)))
+    print()
+    
+    predict_list = {}
+    for clf_name, clf in clf_list.items():
+        print(" > Predicting for", clf_name)
+        predict_list[clf_name] = Predict_and_Report(clf, X_val, y_val, target_names)
+        
+    print()
+    return predict_list
+   
+
+def Show_Confusion_Matrix(cf_matrix, target_names, clf_name="Model's"):
+    """ Print confusion matrix for specified classifier
+    """
+    plt.figure(dpi=150)
+    sns.heatmap(cf_matrix, cmap=plt.cm.Blues, annot=True, square=True,
+            xticklabels=target_names, yticklabels=target_names)
+
+    plt.xlabel('Predicted breeds')
+    plt.ylabel('Actual breeds')
+    plt.title('{} Confusion Matrix'.format(clf_name))
+ 
+
+def Plot_Precision_Recall_Curve(y_test, y_score, target_label, clf_name="Model's"):
+    """ Plot precision recall curve for each class onto one chart
+    """
+    plt.figure(dpi=150)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+
+    precision = dict()
+    recall = dict()
+    for i, label in enumerate(target_label):
+        precision[i], recall[i], _ = precision_recall_curve(y_test[:, i],
+                                                            y_score[:, i])
+        plt.plot(recall[i], precision[i], lw=2, label='{}'.format(label))
+ 
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.legend(loc="best")
+    plt.title("{} Precision vs. Recall Curves".format(clf_name))
+    plt.show()
+    return recall, precision
+
+
+def Plot_ROC_Curve(y_test, y_score, target_label, clf_name="Model's", zoom_level=1.0):
+    """ Plot ROC curve for each class onto one chart
+    """
+    plt.figure(dpi=150)
+
+    # Zoom in view of the upper left corner, if zoom_level is set
+    plt.xlim(0, zoom_level)
+    plt.ylim(1-zoom_level, 1.05)
+
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    
+    # Plot ROC curves for each class
+    for i, label in enumerate(target_label):
+        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_score[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+        plt.plot(fpr[i], tpr[i], lw=2, 
+                 label='{} (AUC: {:.2f})'.format(label, roc_auc[i]))
+
+    # Compute micro-average ROC curve and ROC area
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_score.ravel())
+    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+    # Compute macro-average ROC curve and ROC area
+
+    # First aggregate all false positive rates
+    n_classes = y_test.shape[1]
+    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+
+    # Then interpolate all ROC curves at this points
+    mean_tpr = np.zeros_like(all_fpr)
+    for i in range(n_classes):
+        mean_tpr += interp(all_fpr, fpr[i], tpr[i])
+
+    # Finally average it and compute AUC
+    mean_tpr /= n_classes
+
+    fpr["macro"] = all_fpr
+    tpr["macro"] = mean_tpr
+    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+
+    # Plot both micro and macro average ROC curves
+    plt.plot(fpr["micro"], tpr["micro"],
+            label='Micro-average (AUC: {0:0.2f})'
+                ''.format(roc_auc["micro"]),
+                linestyle=':', linewidth=4)
+
+    plt.plot(fpr["macro"], tpr["macro"],
+            label='Macro-average (AUC: {0:0.2f})'
+                ''.format(roc_auc["macro"]),
+                linestyle=':', linewidth=4)
+
+    plt.plot([0, 1], [0, 1], '--')
+    plt.xlabel("False positive rate")
+    plt.ylabel("True positive rate")
+    plt.legend(loc="best")
+    plt.title("{} ROC Curves: Breeds vs Averages".format(clf_name))
+    plt.show()
+    return fpr, tpr, roc_auc
+
+
+def Compare_Multiple_ROC_Curves(y_test, y_score, zoom_level=1.0):
+    """ Plot multiple ROC curves from different models for comparison
+    """
+    plt.figure(dpi=150)
+    # Zoom in view of the upper left corner, if zoom_level is set
+    plt.xlim(0, zoom_level)
+    plt.ylim(1-zoom_level, 1.05)
+
+    for clf_name in y_test.keys():
+        fpr, tpr, _ = roc_curve(y_test[clf_name].ravel(), y_score[clf_name].ravel())
+        roc_auc = auc(fpr, tpr)
+        plt.plot(fpr, tpr, label="{} (AUC: {:.2f})".format(clf_name, roc_auc))
+
+    plt.plot([0, 1], [0, 1], '--')
+    plt.xlabel('False positive rate')
+    plt.ylabel('True positive rate')
+    plt.title("ROC Curves of different Models")
+    plt.legend(loc='best')
+    plt.show()
+
+
+
+
+def Plot_AUC_ROC_Curve_old():
+    from scipy import interp
+    import matplotlib.pyplot as plt
+    from itertools import cycle
+    from sklearn.metrics import roc_curve, auc
+
+    y_test = to_categorical(y_test)
+
+    n_classes = 3
+
+    # Plot linewidth.
+    lw = 2
+
+    # Compute ROC curve and ROC area for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_pred[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Compute micro-average ROC curve and ROC area
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_pred.ravel())
+    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+    # Compute macro-average ROC curve and ROC area
+
+    # First aggregate all false positive rates
+    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+
+    # Then interpolate all ROC curves at this points
+    mean_tpr = np.zeros_like(all_fpr)
+    for i in range(n_classes):
+        mean_tpr += interp(all_fpr, fpr[i], tpr[i])
+
+    # Finally average it and compute AUC
+    mean_tpr /= n_classes
+
+    fpr["macro"] = all_fpr
+    tpr["macro"] = mean_tpr
+    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+
+    # Plot all ROC curves
+    plt.figure(1)
+    plt.plot(fpr["micro"], tpr["micro"],
+            label='Micro-average ROC curve (area = {0:0.2f})'
+                ''.format(roc_auc["micro"]),
+            color='deeppink', linestyle=':', linewidth=4)
+
+    plt.plot(fpr["macro"], tpr["macro"],
+            label='Macro-average ROC curve (area = {0:0.2f})'
+                ''.format(roc_auc["macro"]),
+            color='navy', linestyle=':', linewidth=4)
+
+    colors = cycle(['red', 'darkorange', 'cornflowerblue'])
+    for i, color in zip(range(n_classes), colors):
+        plt.plot(fpr[i], tpr[i], color=color, lw=lw,
+                label='ROC curve of {0} (area = {1:0.2f})'
+                ''.format(class_label[i], roc_auc[i]))
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=lw)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate',fontweight='bold')
+    plt.ylabel('True Positive Rate',fontweight='bold')
+    plt.title('Extension of Receiver Operating Characteristic to Multi-class',fontweight='bold')
+    plt.legend(loc="lower right")
+    plt.show()
+
+
+def Plot_AUC_ROC_Curve_ZoomIn():
+    # Zoom in view of the upper left corner.
+    plt.figure(2)
+    plt.xlim(0, 0.2)
+    plt.ylim(0.8, 1)
+    plt.plot(fpr["micro"], tpr["micro"],
+            label='Micro-average ROC curve (area = {0:0.2f})'
+                ''.format(roc_auc["micro"]),
+            color='deeppink', linestyle=':', linewidth=4)
+
+    plt.plot(fpr["macro"], tpr["macro"],
+            label='Macro-average ROC curve (area = {0:0.2f})'
+                ''.format(roc_auc["macro"]),
+            color='navy', linestyle=':', linewidth=4)
+
+    colors = cycle(['red', 'darkorange', 'cornflowerblue'])
+    for i, color in zip(range(n_classes), colors):
+        plt.plot(fpr[i], tpr[i], color=color, lw=lw,
+                label='ROC curve of {0} (area = {1:0.2f})'
+                ''.format(class_label[i], roc_auc[i]))
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=lw)
+    plt.xlabel('False Positive Rate',fontweight='bold')
+    plt.ylabel('True Positive Rate',fontweight='bold')
+    plt.title('Extension of Receiver Operating Characteristic to Multi-class',fontweight='bold')
+    plt.legend(loc="lower right")
+    plt.show()
+
+
+def Save_Model_Data(model, model_name, X_test, y_test, history=''):
+    with open('models/' + model_name + '_model.pkl', 'wb') as f:
+            pickle.dump(model, f)
+            
+    with open('models/' + model_name + '_x_test_data.csv', 'w') as f:
+        np.savetxt(f, X_test)
+    
+    with open('models/' + model_name + '_y_test_data.csv', 'w') as f:
+        np.savetxt(f, y_test)
+
+    if history:
+        with open('models/' + model_name + '_history.pkl', 'wb') as f:
+            pickle.dump(history, f)        
+            
+        
+def Load_Model_Data(model_name, neural_network=False):
+    model = pickle.load(open('models/' + model_name + '_model.pkl', 'rb'))
+    X_test = np.loadtxt('models/' + model_name + '_x_test_data.csv')
+    y_test = np.loadtxt('models/' + model_name + '_y_test_data.csv')
+    
+    if neural_network:
+        history = pickle.load(open('models/' + model_name + '_history.pkl', 'rb'))
+        return model, X_test, y_test, history
+    else:
+        return model, X_test, y_test
+
+
+def Save_Model_Data_old(model, history, X_test, y_test, model_name):
+    with open('models/' + model_name + '_model.pkl', 'wb') as f:
+            pickle.dump(model, f)
+    
+    with open('models/' + model_name + '_history.pkl', 'wb') as f:
+            pickle.dump(history, f)        
+            
+    with open('models/' + model_name + '_x_test_data.csv', 'w') as f:
+        np.savetxt(f, X_test)
+    
+    with open('models/' + model_name + '_y_test_data.csv', 'w') as f:
+        np.savetxt(f, y_test)
+        
+        
+def Load_Model_Data_old(model_name):
+    model = pickle.load(open('models/' + model_name + '_model.pkl', 'rb'))
+    history = pickle.load(open('models/' + model_name + '_history.pkl', 'rb'))
+    X_test = np.loadtxt('models/' + model_name + '_x_test_data.csv')
+    y_test = np.loadtxt('models/' + model_name + '_y_test_data.csv')
+    
+    return model, history, X_test, y_test
+
+
+
+if __name__ == '__main__':
+    from lib.data_common import (target_label, Load_and_Split)
+    from sklearn.linear_model import LogisticRegression
+
+    X_train, y_train = Load_and_Split('data/cavy_data_train.csv', (150,150))
+    X_test, y_test = Load_and_Split('data/cavy_data_test.csv', (150,150))
+
+    clf_list = {'log reg': LogisticRegression(multi_class='ovr', n_jobs=-1)}
+    new_clf_list = Vanilla_ML_Run(clf_list, X_train, y_train)
+ 
+    pass
