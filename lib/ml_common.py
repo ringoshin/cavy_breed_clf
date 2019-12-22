@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Thu Aug  8 02:27:36 2019
 
@@ -89,7 +87,7 @@ def Show_Confusion_Matrix(cf_matrix, target_names, clf_name="Model's"):
     plt.title('{} Confusion Matrix'.format(clf_name))
  
 
-def Plot_Precision_Recall_Curve(y_test, y_score, target_label, clf_name="Model's"):
+def Plot_Precision_Recall_Curve(y_test, y_score, target_names, clf_name="Model's"):
     """ Plot precision recall curve for each class onto one chart
     """
     plt.figure(dpi=150)
@@ -98,7 +96,7 @@ def Plot_Precision_Recall_Curve(y_test, y_score, target_label, clf_name="Model's
 
     precision = dict()
     recall = dict()
-    for i, label in enumerate(target_label):
+    for i, label in enumerate(target_names):
         precision[i], recall[i], _ = precision_recall_curve(y_test[:, i],
                                                             y_score[:, i])
         plt.plot(recall[i], precision[i], lw=2, label='{}'.format(label))
@@ -111,7 +109,7 @@ def Plot_Precision_Recall_Curve(y_test, y_score, target_label, clf_name="Model's
     return recall, precision
 
 
-def Plot_ROC_Curve(y_test, y_score, target_label, clf_name="Model's", zoom_level=1.0):
+def Plot_ROC_Curve(y_test, y_score, target_names, clf_name="Model's", zoom_level=1.0):
     """ Plot ROC curve for each class onto one chart
     """
     plt.figure(dpi=150)
@@ -125,17 +123,21 @@ def Plot_ROC_Curve(y_test, y_score, target_label, clf_name="Model's", zoom_level
     roc_auc = dict()
     
     # Plot ROC curves for each class
-    for i, label in enumerate(target_label):
+    for i, label in enumerate(target_names):
         fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_score[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
         plt.plot(fpr[i], tpr[i], lw=2, 
                  label='{} (AUC: {:.2f})'.format(label, roc_auc[i]))
-
+    #
     # Compute micro-average ROC curve and ROC area
+    #
     fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_score.ravel())
     roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
+
+    #
     # Compute macro-average ROC curve and ROC area
+    #
 
     # First aggregate all false positive rates
     n_classes = y_test.shape[1]
@@ -170,6 +172,7 @@ def Plot_ROC_Curve(y_test, y_score, target_label, clf_name="Model's", zoom_level
     plt.legend(loc="best")
     plt.title("{} ROC Curves: Breeds vs Averages".format(clf_name))
     plt.show()
+    
     return fpr, tpr, roc_auc
 
 
@@ -191,78 +194,6 @@ def Compare_Multiple_ROC_Curves(y_test, y_score, zoom_level=1.0):
     plt.ylabel('True positive rate')
     plt.title("ROC Curves of different Models")
     plt.legend(loc='best')
-    plt.show()
-
-
-
-
-def Plot_AUC_ROC_Curve_old():
-    from scipy import interp
-    import matplotlib.pyplot as plt
-    from itertools import cycle
-    from sklearn.metrics import roc_curve, auc
-
-    y_test = to_categorical(y_test)
-
-    n_classes = 3
-
-    # Plot linewidth.
-    lw = 2
-
-    # Compute ROC curve and ROC area for each class
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_pred[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
-
-    # Compute micro-average ROC curve and ROC area
-    fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_pred.ravel())
-    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
-
-    # Compute macro-average ROC curve and ROC area
-
-    # First aggregate all false positive rates
-    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
-
-    # Then interpolate all ROC curves at this points
-    mean_tpr = np.zeros_like(all_fpr)
-    for i in range(n_classes):
-        mean_tpr += interp(all_fpr, fpr[i], tpr[i])
-
-    # Finally average it and compute AUC
-    mean_tpr /= n_classes
-
-    fpr["macro"] = all_fpr
-    tpr["macro"] = mean_tpr
-    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
-
-    # Plot all ROC curves
-    plt.figure(1)
-    plt.plot(fpr["micro"], tpr["micro"],
-            label='Micro-average ROC curve (area = {0:0.2f})'
-                ''.format(roc_auc["micro"]),
-            color='deeppink', linestyle=':', linewidth=4)
-
-    plt.plot(fpr["macro"], tpr["macro"],
-            label='Macro-average ROC curve (area = {0:0.2f})'
-                ''.format(roc_auc["macro"]),
-            color='navy', linestyle=':', linewidth=4)
-
-    colors = cycle(['red', 'darkorange', 'cornflowerblue'])
-    for i, color in zip(range(n_classes), colors):
-        plt.plot(fpr[i], tpr[i], color=color, lw=lw,
-                label='ROC curve of {0} (area = {1:0.2f})'
-                ''.format(class_label[i], roc_auc[i]))
-
-    plt.plot([0, 1], [0, 1], 'k--', lw=lw)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate',fontweight='bold')
-    plt.ylabel('True Positive Rate',fontweight='bold')
-    plt.title('Extension of Receiver Operating Characteristic to Multi-class',fontweight='bold')
-    plt.legend(loc="lower right")
     plt.show()
 
 
@@ -295,16 +226,10 @@ def Plot_AUC_ROC_Curve_ZoomIn():
     plt.show()
 
 
-def Save_Model_Data(model, model_name, X_test, y_test, history=''):
+def Save_Model_Data(model, model_name, history=''):
     with open('models/' + model_name + '_model.pkl', 'wb') as f:
             pickle.dump(model, f)
             
-    with open('models/' + model_name + '_x_test_data.csv', 'w') as f:
-        np.savetxt(f, X_test)
-    
-    with open('models/' + model_name + '_y_test_data.csv', 'w') as f:
-        np.savetxt(f, y_test)
-
     if history:
         with open('models/' + model_name + '_history.pkl', 'wb') as f:
             pickle.dump(history, f)        
@@ -312,48 +237,25 @@ def Save_Model_Data(model, model_name, X_test, y_test, history=''):
         
 def Load_Model_Data(model_name, neural_network=False):
     model = pickle.load(open('models/' + model_name + '_model.pkl', 'rb'))
-    X_test = np.loadtxt('models/' + model_name + '_x_test_data.csv')
-    y_test = np.loadtxt('models/' + model_name + '_y_test_data.csv')
     
     if neural_network:
         history = pickle.load(open('models/' + model_name + '_history.pkl', 'rb'))
-        return model, X_test, y_test, history
+        return model, history
     else:
-        return model, X_test, y_test
-
-
-def Save_Model_Data_old(model, history, X_test, y_test, model_name):
-    with open('models/' + model_name + '_model.pkl', 'wb') as f:
-            pickle.dump(model, f)
-    
-    with open('models/' + model_name + '_history.pkl', 'wb') as f:
-            pickle.dump(history, f)        
-            
-    with open('models/' + model_name + '_x_test_data.csv', 'w') as f:
-        np.savetxt(f, X_test)
-    
-    with open('models/' + model_name + '_y_test_data.csv', 'w') as f:
-        np.savetxt(f, y_test)
-        
-        
-def Load_Model_Data_old(model_name):
-    model = pickle.load(open('models/' + model_name + '_model.pkl', 'rb'))
-    history = pickle.load(open('models/' + model_name + '_history.pkl', 'rb'))
-    X_test = np.loadtxt('models/' + model_name + '_x_test_data.csv')
-    y_test = np.loadtxt('models/' + model_name + '_y_test_data.csv')
-    
-    return model, history, X_test, y_test
+        return model
 
 
 
 if __name__ == '__main__':
-    from lib.data_common import (target_label, Load_and_Split)
+    from lib.data_common import (target_names, Load_and_Split)
     from sklearn.linear_model import LogisticRegression
 
     X_train, y_train = Load_and_Split('data/cavy_data_train.csv', (150,150))
     X_test, y_test = Load_and_Split('data/cavy_data_test.csv', (150,150))
 
-    clf_list = {'log reg': LogisticRegression(multi_class='ovr', n_jobs=-1)}
+#    clf_list = {'log reg': LogisticRegression(multi_class='ovr', n_jobs=-1)}
+    clf_list = {'log reg': OneVsRestClassifier(LogisticRegression(multi_class='ovr', n_jobs=-1), n_jobs=-1)}
+    
     new_clf_list = Vanilla_ML_Run(clf_list, X_train, y_train)
  
     pass

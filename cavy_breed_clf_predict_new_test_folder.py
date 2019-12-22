@@ -6,15 +6,16 @@ Created on Sat Aug 17 00:19:17 2019
 @author: ringoshin
 """
 
+from lib.data_common import target_names
 from lib.ml_common import (Vanilla_ML_Run, Vanilla_ML_Predict, 
                            Vanilla_ML_Run_CV)
-from lib.nn_common import (Image_CNN_VGG, Image_CNN_VGG_Train,
-                           Image__CNN_From_InceptionV3,
+from lib.nn_common import (Image_CNN_Multilayer, Image_CNN_Multilayer_Train,
+                           Image_CNN_From_InceptionV3,
                            Image_CNN_From_InceptionV3_Train, 
                            Image_NN_Predict_One, Image_NN_Predict,
                            Image_NN_Plt_Acc, Image_NN_Plt_Loss, 
                            Image_NN_Plt_Training, Image_NN_Plt_Validation,
-                           Save_Model_Data, Load_Model_Data)
+                           Save_NN_Model_Data, Load_NN_Model_Data)
 
 import cv2
 import numpy as np
@@ -39,8 +40,7 @@ np.random.seed(seed)
 new_test_path = 'images/new_test/'
 new_test_list = os.listdir('images/new_test')
 
-target_label = ['American', 'Abyssinian', 'Skinny']
-class_label = ['American', 'Abyssinian', 'Skinny']
+#class_labels = ['American', 'Abyssinian', 'Skinny']
 
 nrows = 150
 ncolumns = 150
@@ -72,19 +72,22 @@ def Read_and_Process_One_Image(image_file):
     return X, y
 
 
-model, history, X_test, y_test = Load_Model_Data('inceptionV3_tuned_freeze-240_sgd_v1_epoch-100')
+model, history = Load_NN_Model_Data('inceptionV3_tuned_freeze-230_sgd_v2_epoch-100')
 
 print()
 print(" >> Predicting new test images")
-plt.figure(figsize=(60,100))
+plt.figure(figsize=(40,150))
 num_images = len(new_test_list)
+num_disp_col = 2
+num_disp_row = num_images//num_disp_col + (1 if num_images%num_disp_col else 0)
+
 for i, image_file in enumerate(new_test_list, start=1):
     X_raw, y = Read_and_Process_One_Image(image_file)
     X = np.array(X_raw)
-    y_pred_label, y_pred = Image_NN_Predict_One(model, X, target_label, batch_size=32, verbose=0)
-    print(image_file, y_pred_label)
-    plt.subplot(num_images, 1, i)
-    plt.title(image_file + ' - ' + y_pred_label)
+    y_pred_label, y_val_bool, y_pred = Image_NN_Predict_One(model, X, target_names, verbose=2)
+#    print(image_file, y_pred_label)
+#    plt.subplot(num_images, 1, i)
+    plt.subplot(num_disp_row, num_disp_col, i)
+    y_pred_long_desc = "({}: {:.2%})".format(y_pred_label, y_pred[y_val_bool])
+    plt.title(image_file + ' ' + y_pred_long_desc, fontsize=14)
     imgplot = plt.imshow(mpimg.imread(new_test_path+image_file))
-    
-    

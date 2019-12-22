@@ -50,7 +50,7 @@ def Create_Data_Generator(X_train, y_train, X_val, y_val, batch_size=32):
     return train_generator, val_generator
 
 
-def Image_CNN_VGG(target_num, input_shape=(150,150,3)):
+def Image_CNN_Multilayer(num_target, input_shape=(150,150,3)):
     model = Sequential()
     model.add(Conv2D(32, (3,3), activation='relu', input_shape=input_shape))
     model.add(MaxPooling2D((2,2)))
@@ -63,32 +63,32 @@ def Image_CNN_VGG(target_num, input_shape=(150,150,3)):
     model.add(Flatten())
     model.add(Dropout(0.5))
     model.add(Dense(512, activation='relu'))
-    model.add(Dense(target_num, activation='softmax'))
+    model.add(Dense(num_target, activation='softmax'))
     
     model.compile(loss='categorical_crossentropy', optimizer='adam', 
                   metrics=['categorical_accuracy'])
     return model
 
 
-def Image_CNN_VGG_Train(model, X_train, y_train, X_val, y_val, epochs=10, 
+def Image_CNN_Multilayer_Train(model, X_train, y_train, X_val, y_val, epochs=10, 
                         batch_size=32, verbose=0):
-    print(">> Training cnn based on vgg")
+    print(">> Training multilayer image CNN")
     ntrain = len(X_train)
     nval = len(X_val)
     train_generator, val_generator = Create_Data_Generator(X_train, y_train, 
                                                            X_val, y_val, 
                                                            batch_size=batch_size)    
     history = model.fit_generator(train_generator, 
-                                  steps_per_epoch=ntrain // batch_size,
+                                  steps_per_epoch=ntrain // batch_size + 1,
                                   epochs=epochs,
                                   validation_data=val_generator,
-                                  validation_steps=nval // batch_size,
+                                  validation_steps=nval // batch_size + 1,
                                   verbose=verbose)
     print()
     return model, history
 
 
-def Image__CNN_From_InceptionV3(target_num, input_shape=(150,150,3)):
+def Image_CNN_From_InceptionV3(num_target, input_shape=(150,150,3)):
     # create the base pre-trained model
     base_model = InceptionV3(input_shape=input_shape, weights='imagenet', include_top=False)
     # add a global spatial average pooling layer
@@ -97,7 +97,7 @@ def Image__CNN_From_InceptionV3(target_num, input_shape=(150,150,3)):
     # let's add a fully-connected layer
     x = Dense(1024, activation='relu')(x)
     # and a logistic layer -- let's say we have 200 classes
-    predictions = Dense(target_num, activation='softmax')(x)
+    predictions = Dense(num_target, activation='softmax')(x)
     # this is the model we will train
     model = Model(inputs=base_model.input, outputs=predictions)
     
@@ -113,7 +113,7 @@ def Image__CNN_From_InceptionV3(target_num, input_shape=(150,150,3)):
 
 
 def Image_CNN_From_InceptionV3_Train(model, X_train, y_train, X_val, y_val, 
-                                     epochs=10, batch_size=32, verbose=0):
+                                     epochs=10, batch_size=32, freeze_layer=240, verbose=0):
     print(">>> Training with pre-trained Inception v3")
     print(" >> Training model with new data")
     
@@ -129,10 +129,10 @@ def Image_CNN_From_InceptionV3_Train(model, X_train, y_train, X_val, y_val,
     # train the model on the new data for a few epochs
     history_1_verbose = 2 if verbose==1 else verbose  # Go for quieter verbosity
     history_1 = model.fit_generator(train_generator, 
-                                   steps_per_epoch=ntrain // batch_size,
+                                   steps_per_epoch=ntrain // batch_size + 1,
                                    epochs=epochs,
                                    validation_data=val_generator,
-                                   validation_steps=nval // batch_size, 
+                                   validation_steps=nval // batch_size + 1, 
                                    verbose=history_1_verbose,
                                    callbacks=[early_stopping_monitor_1])
 #                                   verbose=0,
@@ -143,9 +143,9 @@ def Image_CNN_From_InceptionV3_Train(model, X_train, y_train, X_val, y_val,
     # freeze the bottom N layers and train the remaining top layers
     # we chose to train the top 2 inception blocks, i.e. we will freeze
     # the first 249 layers and unfreeze the rest:
-    for layer in model.layers[:230]:
+    for layer in model.layers[:freeze_layer]:
         layer.trainable = False
-    for layer in model.layers[230:]:
+    for layer in model.layers[freeze_layer:]:
         layer.trainable = True
     
     # we need to recompile the model for these modifications to take effect
@@ -165,10 +165,10 @@ def Image_CNN_From_InceptionV3_Train(model, X_train, y_train, X_val, y_val,
     # alongside the top Dense layers
     
     history_2 = model.fit_generator(train_generator, 
-                                   steps_per_epoch=ntrain // batch_size,
+                                   steps_per_epoch=ntrain // batch_size + 1,
                                    epochs=epochs,
                                    validation_data=val_generator,
-                                   validation_steps=nval // batch_size, 
+                                   validation_steps=nval // batch_size + 1, 
                                    verbose=verbose)
 #                                   callbacks=[early_stopping_monitor_2])
 #                                   verbose=0,
@@ -178,29 +178,61 @@ def Image_CNN_From_InceptionV3_Train(model, X_train, y_train, X_val, y_val,
     return model, history_1, history_2
 
 
-def Image_NN_Predict(model, X_val, y_val, target_names, batch_size=32, verbose=1):
+def Image_NN_Predict(model, X_val_reshape, y_val, target_names, batch_size=32, verbose=1):
     print(">> Predicting on neural network")
-    X_rescale = X_val/255.
-    y_pred = model.predict(X_rescale, batch_size=batch_size, verbose=verbose)
-    y_bool = np.argmax(y_pred, axis=1)
-    clf_report = classification_report(y_val, y_bool, target_names=target_names)
-    cf_matrix = confusion_matrix(y_val, y_bool)
+
+    nval = len(X_val_reshape)    
+    val_datagen = ImageDataGenerator(rescale=1./255)
+#    X_val_reshape = X_val.reshape(input_shape)
+    val_generator = val_datagen.flow(X_val_reshape, y_val, 
+                                    batch_size=batch_size, shuffle=False)
+    y_pred = model.predict_generator(val_generator, 
+                                    steps=nval // batch_size+1,
+                                    workers =-1,
+                                    verbose=verbose)
+
+    y_val_bool = np.argmax(y_val, axis=1)
+    y_pred_bool = np.argmax(y_pred, axis=1)
+
+    clf_report = classification_report(y_val_bool, y_pred_bool, target_names=target_names)
+    cf_matrix = confusion_matrix(y_val_bool, y_pred_bool)
     print(clf_report)
     print(cf_matrix)
     print()
-    return clf_report, cf_matrix, y_pred
+    return clf_report, cf_matrix, y_pred, y_pred_bool
 
 
-def Image_NN_Predict_One(model, X_val, target_names, batch_size=32, verbose=1):
+def Image_NN_Predict_One(model, X_val_reshape, target_names, verbose=1):
     #print(">> Predicting one image on neural network")
-    X_rescale = X_val/255.
-    y_pred = model.predict(X_rescale.reshape((-1,150,150,3)), batch_size=batch_size, verbose=verbose)
-    y_bool = int(np.argmax(y_pred, axis=1))
+    X_val_rescale = X_val_reshape/255.
+    y_pred = model.predict(X_val_rescale.reshape((-1, 150, 150, 3)), verbose=verbose)
+    y_val_bool = np.argmax(y_pred)
     #print(" > Predicted >", target_names[y_bool])
     #print(" > all proba >", y_pred)
     #print()
-    return target_names[y_bool], y_pred
-    
+    return target_names[y_val_bool], y_val_bool, y_pred[0]
+
+
+def Image_NN_Predict_Random_Test_Images(model, X_test, y_test, target_names, input_shape, num_img=5, verbose=2):
+    print(" >> Predicting on randomly selected test images")
+   
+    num_disp_col = 3
+    num_disp_row = num_img//num_disp_col + (1 if num_img%num_disp_col else 0)
+    plt.figure(figsize=(20,7*num_disp_row))
+
+    random_idx = np.random.choice(range(len(X_test)), num_img, replace=False)
+
+    for count, idx in enumerate(random_idx, start=1):
+        X_test_selected = X_test.reshape(input_shape)[idx]
+        y_test_label = target_names[np.argmax(y_test[idx])]
+        y_pred_label, y_val_bool, y_pred = Image_NN_Predict_One(model, X_test_selected, target_names, verbose=2)
+        #    print(image_file, y_pred_label)
+        #    plt.subplot(num_images, 1, i)
+        plt.subplot(num_disp_row, num_disp_col, count)
+        y_pred_long_desc = "Predict: {} ({:.0%}), Actual: {}".format(y_pred_label, y_pred[y_val_bool], y_test_label)
+        plt.title(y_pred_long_desc, fontsize=14)
+        imgplot = plt.imshow(X_test_selected)
+
 
 def Image_NN_Plt_Acc(history):
     acc = history.history['categorical_accuracy']
@@ -254,27 +286,17 @@ def Image_NN_Plt_Validation(history):
     plt.legend()
     
     
-def Save_Model_Data(model, history, X_test, y_test, model_name):
+def Save_NN_Model_Data(model, history, model_name):
     with open('models/' + model_name + '_model.pkl', 'wb') as f:
             pickle.dump(model, f)
-    
     with open('models/' + model_name + '_history.pkl', 'wb') as f:
             pickle.dump(history, f)        
-            
-    with open('models/' + model_name + '_x_test_data.csv', 'w') as f:
-        np.savetxt(f, X_test)
-    
-    with open('models/' + model_name + '_y_test_data.csv', 'w') as f:
-        np.savetxt(f, y_test)
         
         
-def Load_Model_Data(model_name):
+def Load_NN_Model_Data(model_name):
     model = pickle.load(open('models/' + model_name + '_model.pkl', 'rb'))
     history = pickle.load(open('models/' + model_name + '_history.pkl', 'rb'))
-    X_test = np.loadtxt('models/' + model_name + '_x_test_data.csv')
-    y_test = np.loadtxt('models/' + model_name + '_y_test_data.csv')
-    
-    return model, history, X_test, y_test
+    return model, history
     
         
 if __name__ == '__main__':

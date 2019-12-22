@@ -13,7 +13,7 @@ import os
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder
 
 
-target_label = ['Abyssinian', 'American', 'Skinny']
+target_names = ['Abyssinian', 'American', "Silkie", 'Skinny']
 
 
 def Read_and_Process_Image(image_path, image_shape):
@@ -34,5 +34,20 @@ def Load_and_Split(dataset_path, image_shape):
 
                          
 if __name__ == '__main__':
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    X_train, y_train = Load_and_Split('data/cavy_data_train.csv', (150,150))
+    X_val, y_val = Load_and_Split('data/cavy_data_val.csv', (150,150))
     X_test, y_test = Load_and_Split('data/cavy_data_test.csv', (150,150))
+    plt.figure(figsize=(5,15))
+    plt.subplot(3, 1, 1)
+    _ = plt.title('train: ' + str(np.argmax(y_train[0])))
+    _ = plt.imshow(X_train[0].reshape(150,150,3))
+    plt.subplot(3, 1, 2)
+    _ = plt.title('val: ' + str(np.argmax(y_val[0])))
+    _ = plt.imshow(X_val[0].reshape(150,150,3))
+    plt.subplot(3, 1, 3)
+    _ = plt.title('test: ' + str(np.argmax(y_test[0])))
+    _ = plt.imshow(X_test[0].reshape(150,150,3))
     pass

@@ -1,4 +1,4 @@
-from lib.data_common import (target_label, Read_and_Process_Image, 
+from lib.data_common import (target_names, Read_and_Process_Image, 
                              Load_and_Split)    
                              
 import cv2
@@ -38,7 +38,6 @@ seed = 128
 np.random.seed(seed)
 image_shape = (150, 150)
 
-target_names = ['Abyssinian', 'American', 'Skinny']
 le = LabelEncoder()
 
 
@@ -93,3 +92,46 @@ plt.ylabel('Actual breeds')
 plt.title('{} Confusion Matrix'.format(clf_name))
 
 
+# Toy code to predict saved neural network models
+X_val_rescale = X_val.reshape((-1,150,150,3))[:10]
+test_datagen = ImageDataGenerator(rescale=1./255)
+    
+i = 0
+text_labels=[]
+plt.figure(figsize=(10,30))
+for j, batch in enumerate(test_datagen.flow(X_val_rescale, batch_size=1)):
+    pred = model_1.predict(batch)
+    pred_pos = pred.argmax()
+    text_labels.append(target_label[pred_pos])
+    plt.subplot(5, 2, i+1)
+    plt.title(text_labels[i])
+    imgplot = plt.imshow(batch[0])
+    i += 1
+    if i%10==0:
+        break
+
+
+# more toy codes to eyeball predicted results from saved neural network models
+clf_report_1_test, cf_matrix_1_test, y_pred_test, y_bool_test = Image_NN_Predict(model_1,
+                                             X_test.reshape(input_shape), 
+                                             y_test, 
+                                             target_names=target_names,
+                                             batch_size=batch_size, 
+                                             verbose=2)
+
+print(y_bool_1[:5],'\n', y_pred_1[:5])
+
+["{}: {:.2%}".format(target_names[y_bool_1[img_idx]], y_pred_1[img_idx,y_bool_1[img_idx]]) for img_idx in range(5)]
+
+for i in range(5):
+    target_name_one_img, y_val_bool_one_img, y_pred_one_img = Image_NN_Predict_One(model_1, 
+                                                               X_val.reshape(input_shape)[i], 
+                                                               target_names=target_names, 
+                                                               verbose=2)
+    print("{:13} {:.2%}".format(target_name_one_img+':', y_pred_one_img[y_val_bool_one_img]))
+
+plt.figure(figsize=(15, 25))
+for i, each_image in enumerate(X_val_rescale[:5]):
+    plt.subplot(5, 1, i+1)
+    plt.title('val: ' + str(np.argmax(y_val[i])))
+    imgplot = plt.imshow(each_image)
