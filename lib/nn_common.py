@@ -26,9 +26,13 @@ from keras.callbacks import EarlyStopping
 
 from sklearn.metrics import (classification_report, f1_score, confusion_matrix)
 
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
+import cv2
 
 import pickle
+from pathlib import Path
+import os
 
 
 def Create_Data_Generator(X_train, y_train, X_val, y_val, batch_size=32):
@@ -232,6 +236,41 @@ def Image_NN_Predict_Random_Test_Images(model, X_test, y_test, target_names, inp
         y_pred_long_desc = "Predict: {} ({:.0%}), Actual: {}".format(y_pred_label, y_pred[y_val_bool], y_test_label)
         plt.title(y_pred_long_desc, fontsize=14)
         imgplot = plt.imshow(X_test_selected)
+
+
+def Read_and_Process_One_Image(image_file, nrows, ncolumns, sample_path):    
+    image = sample_path/image_file
+    #image=new_test_path+image_file
+            
+    #print(image)
+    X = (cv2.resize(cv2.imread(str(image), cv2.IMREAD_COLOR), \
+                            (nrows, ncolumns), interpolation=cv2.INTER_CUBIC))
+    y = image
+    return X, y
+
+
+def Image_NN_Predict_New_Samples(model, nrows, ncolumns, target_names, sample_path='images/new_samples/'):
+    sample_path = Path(sample_path)
+    sample_filelist = os.listdir(sample_path)
+
+    print()
+    print(" >> Predicting new sample images")
+    
+    num_images = len(sample_filelist)
+    num_disp_col = 3
+    num_disp_row = num_images//num_disp_col + (1 if num_images%num_disp_col else 0)
+    plt.figure(figsize=(20,7*num_disp_row))
+
+    for i, image_file in enumerate(sample_filelist, start=1):
+        X_raw, y = Read_and_Process_One_Image(image_file, nrows, ncolumns, sample_path)
+        X = np.array(X_raw)
+        y_pred_label, y_val_bool, y_pred = Image_NN_Predict_One(model, X, target_names, verbose=2)
+    #    print(image_file, y_pred_label)
+    #    plt.subplot(num_images, 1, i)
+        plt.subplot(num_disp_row, num_disp_col, i)
+        y_pred_long_desc = "Predicted: {} ({:.0%}), Actual: {}".format(y_pred_label, y_pred[y_val_bool], image_file)
+        plt.title(y_pred_long_desc, fontsize=12)
+        _ = plt.imshow(mpimg.imread(y))
 
 
 def Image_NN_Plt_Acc(history):

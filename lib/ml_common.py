@@ -12,8 +12,8 @@ from itertools import cycle
 from scipy import interp
 
 from sklearn.metrics import (classification_report, confusion_matrix, 
-                             precision_recall_curve, roc_curve, auc, 
-                             roc_auc_score, f1_score, accuracy_score)
+                             precision_recall_curve, average_precision_score,
+                             roc_curve, auc, roc_auc_score, f1_score, accuracy_score)
 from sklearn.model_selection import (train_test_split, cross_val_score,
                                      cross_validate, StratifiedKFold, KFold)
 from sklearn.utils import shuffle
@@ -87,26 +87,63 @@ def Show_Confusion_Matrix(cf_matrix, target_names, clf_name="Model's"):
     plt.title('{} Confusion Matrix'.format(clf_name))
  
 
-def Plot_Precision_Recall_Curve(y_test, y_score, target_names, clf_name="Model's"):
+def Plot_Precision_Recall_Curve(y_test, y_score, target_names, clf_name="Model's", zoom_level=1.0):
     """ Plot precision recall curve for each class onto one chart
     """
+
+    # Zoom in view of the upper right corner, if zoom_level is set
     plt.figure(dpi=150)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
+    plt.xlim(1-zoom_level, 1.0)
+    plt.ylim(1-zoom_level, 1.05)
 
     precision = dict()
     recall = dict()
+    ap_score = dict()
+        
+    # Plots Precision-Recall curve for each class
     for i, label in enumerate(target_names):
-        precision[i], recall[i], _ = precision_recall_curve(y_test[:, i],
-                                                            y_score[:, i])
-        plt.plot(recall[i], precision[i], lw=2, label='{}'.format(label))
- 
+        precision[i], recall[i], _ = precision_recall_curve(y_test[:, i], y_score[:, i])
+        ap_score[i] = average_precision_score(y_test[:, i], y_score[:, i])
+        plt.plot(recall[i], precision[i], lw=2, label='{} (area: {:.2f})'.format(label, ap_score[i]))
+
+    #
+    # Compute micro-average precision-recall curve and AP score (area)
+    #
+    precision["micro"], recall["micro"], _ = precision_recall_curve(y_test.ravel(), y_score.ravel())
+    ap_score["micro"] = average_precision_score(y_test, y_score, average="micro")
+
+    # Plot both micro-average precision recall curves
+    plt.plot(precision["micro"], recall["micro"],
+            label='Micro-average (area: {0:0.2f})'
+                ''.format(ap_score["micro"]),
+                linestyle=':', linewidth=4)
+
     plt.xlabel("Recall")
     plt.ylabel("Precision")
     plt.legend(loc="best")
-    plt.title("{} Precision vs. Recall Curves".format(clf_name))
+    plt.title("{} Precision-Recall Curves".format(clf_name))
     plt.show()
     return recall, precision
+
+
+def Compare_Precision_Recall_Curves(y_test, y_score, zoom_level=1.0):
+    """ Plot multiple PR curves from different models for comparison
+    """
+    plt.figure(dpi=150)
+    # Zoom in view of the upper left corner, if zoom_level is set
+    plt.xlim(1-zoom_level, 1.0)
+    plt.ylim(1-zoom_level, 1.05)
+
+    for clf_name in y_score.keys():
+        precision, recall, _ = precision_recall_curve(y_test.ravel(), y_score[clf_name].ravel())
+        ap_score = average_precision_score(y_test, y_score[clf_name])
+        plt.plot(precision, recall, label="{} (area: {:.2f})".format(clf_name, ap_score))
+
+    plt.xlabel('Precision')
+    plt.ylabel('Recall')
+    plt.title("Precision-Recall Curves of different Models")
+    plt.legend(loc='best')
+    plt.show()
 
 
 def Plot_ROC_Curve(y_test, y_score, target_names, clf_name="Model's", zoom_level=1.0):
@@ -184,8 +221,8 @@ def Compare_Multiple_ROC_Curves(y_test, y_score, zoom_level=1.0):
     plt.xlim(0, zoom_level)
     plt.ylim(1-zoom_level, 1.05)
 
-    for clf_name in y_test.keys():
-        fpr, tpr, _ = roc_curve(y_test[clf_name].ravel(), y_score[clf_name].ravel())
+    for clf_name in y_score.keys():
+        fpr, tpr, _ = roc_curve(y_test.ravel(), y_score[clf_name].ravel())
         roc_auc = auc(fpr, tpr)
         plt.plot(fpr, tpr, label="{} (AUC: {:.2f})".format(clf_name, roc_auc))
 
@@ -194,35 +231,6 @@ def Compare_Multiple_ROC_Curves(y_test, y_score, zoom_level=1.0):
     plt.ylabel('True positive rate')
     plt.title("ROC Curves of different Models")
     plt.legend(loc='best')
-    plt.show()
-
-
-def Plot_AUC_ROC_Curve_ZoomIn():
-    # Zoom in view of the upper left corner.
-    plt.figure(2)
-    plt.xlim(0, 0.2)
-    plt.ylim(0.8, 1)
-    plt.plot(fpr["micro"], tpr["micro"],
-            label='Micro-average ROC curve (area = {0:0.2f})'
-                ''.format(roc_auc["micro"]),
-            color='deeppink', linestyle=':', linewidth=4)
-
-    plt.plot(fpr["macro"], tpr["macro"],
-            label='Macro-average ROC curve (area = {0:0.2f})'
-                ''.format(roc_auc["macro"]),
-            color='navy', linestyle=':', linewidth=4)
-
-    colors = cycle(['red', 'darkorange', 'cornflowerblue'])
-    for i, color in zip(range(n_classes), colors):
-        plt.plot(fpr[i], tpr[i], color=color, lw=lw,
-                label='ROC curve of {0} (area = {1:0.2f})'
-                ''.format(class_label[i], roc_auc[i]))
-
-    plt.plot([0, 1], [0, 1], 'k--', lw=lw)
-    plt.xlabel('False Positive Rate',fontweight='bold')
-    plt.ylabel('True Positive Rate',fontweight='bold')
-    plt.title('Extension of Receiver Operating Characteristic to Multi-class',fontweight='bold')
-    plt.legend(loc="lower right")
     plt.show()
 
 
