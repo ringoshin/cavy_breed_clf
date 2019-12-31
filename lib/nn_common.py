@@ -70,7 +70,7 @@ def Image_CNN_Multilayer(num_target, input_shape=(150,150,3)):
     model.add(Dense(num_target, activation='softmax'))
     
     model.compile(loss='categorical_crossentropy', optimizer='adam', 
-                  metrics=['categorical_accuracy'])
+                  metrics=['categorical_accuracy']) 
     return model
 
 
@@ -137,8 +137,8 @@ def Image_CNN_From_InceptionV3_Train(model, X_train, y_train, X_val, y_val,
                                    epochs=epochs,
                                    validation_data=val_generator,
                                    validation_steps=nval // batch_size + 1, 
-                                   verbose=history_1_verbose,
-                                   callbacks=[early_stopping_monitor_1])
+                                   verbose=history_1_verbose)
+#                                   callbacks=[early_stopping_monitor_1])
 #                                   verbose=0,
 #                                   callbacks=[TQDM_Callback, early_stopping_monitor])
     

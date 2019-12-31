@@ -79,7 +79,7 @@ def Show_Confusion_Matrix(cf_matrix, target_names, clf_name="Model's"):
     """ Print confusion matrix for specified classifier
     """
     plt.figure(dpi=150)
-    sns.heatmap(cf_matrix, cmap=plt.cm.Blues, annot=True, square=True,
+    sns.heatmap(cf_matrix, cmap=plt.cm.Blues, annot=True, fmt="d", square=True,
             xticklabels=target_names, yticklabels=target_names)
 
     plt.xlabel('Predicted breeds')
@@ -113,7 +113,7 @@ def Plot_Precision_Recall_Curve(y_test, y_score, target_names, clf_name="Model's
     ap_score["micro"] = average_precision_score(y_test, y_score, average="micro")
 
     # Plot both micro-average precision recall curves
-    plt.plot(precision["micro"], recall["micro"],
+    plt.plot(recall["micro"], precision["micro"], 
             label='Micro-average (area: {0:0.2f})'
                 ''.format(ap_score["micro"]),
                 linestyle=':', linewidth=4)
@@ -126,7 +126,7 @@ def Plot_Precision_Recall_Curve(y_test, y_score, target_names, clf_name="Model's
     return recall, precision
 
 
-def Compare_Precision_Recall_Curves(y_test, y_score, zoom_level=1.0):
+def Compare_Multiple_PR_Curves(y_test, y_score, zoom_level=1.0):
     """ Plot multiple PR curves from different models for comparison
     """
     plt.figure(dpi=150)
@@ -137,7 +137,7 @@ def Compare_Precision_Recall_Curves(y_test, y_score, zoom_level=1.0):
     for clf_name in y_score.keys():
         precision, recall, _ = precision_recall_curve(y_test.ravel(), y_score[clf_name].ravel())
         ap_score = average_precision_score(y_test, y_score[clf_name])
-        plt.plot(precision, recall, label="{} (area: {:.2f})".format(clf_name, ap_score))
+        plt.plot(recall, precision, label="{} (area: {:.2f})".format(clf_name, ap_score))
 
     plt.xlabel('Precision')
     plt.ylabel('Recall')
@@ -195,12 +195,12 @@ def Plot_ROC_Curve(y_test, y_score, target_names, clf_name="Model's", zoom_level
     # Plot both micro and macro average ROC curves
     plt.plot(fpr["micro"], tpr["micro"],
             label='Micro-average (AUC: {0:0.2f})'
-                ''.format(roc_auc["micro"]),
+                ''.format(roc_auc["micro"]), color='deeppink',
                 linestyle=':', linewidth=4)
 
     plt.plot(fpr["macro"], tpr["macro"],
             label='Macro-average (AUC: {0:0.2f})'
-                ''.format(roc_auc["macro"]),
+                ''.format(roc_auc["macro"]), color='navy',
                 linestyle=':', linewidth=4)
 
     plt.plot([0, 1], [0, 1], '--')
@@ -257,6 +257,7 @@ def Load_Model_Data(model_name, neural_network=False):
 if __name__ == '__main__':
     from lib.data_common import (target_names, Load_and_Split)
     from sklearn.linear_model import LogisticRegression
+    from sklearn.multiclass import OneVsRestClassifier
 
     X_train, y_train = Load_and_Split('data/cavy_data_train.csv', (150,150))
     X_test, y_test = Load_and_Split('data/cavy_data_test.csv', (150,150))
