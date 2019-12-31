@@ -1,4 +1,4 @@
-# Guinea Pig Breed Classfication
+# Guinea Pig Breed Classification
 ## Identify cavy breed using images through machine learning
 
 If you just want to explore quickly through this project, you can do so by doing the following on Google Colab:
