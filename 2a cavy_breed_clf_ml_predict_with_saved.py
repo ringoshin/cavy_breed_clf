@@ -10,7 +10,8 @@ from lib.data_common import (target_names, Read_and_Process_Image,
 from lib.ml_common import (Predict_and_Report, Vanilla_ML_Predict,
                            Show_Confusion_Matrix, Load_Model_Data,
                            Plot_Precision_Recall_Curve, Plot_ROC_Curve,
-                           Compare_Multiple_ROC_Curves, Compare_Multiple_PR_Curves)
+                           Compare_Multiple_ROC_Curves, Compare_Multiple_PR_Curves,
+                           ML_Predict_Random_Test_Images)
 
 import numpy as np
 import pandas as pd
@@ -73,3 +74,6 @@ _ = Plot_Precision_Recall_Curve(y_test, y_score, target_names,
                    clf_name=clf_name, zoom_level=0.7)
 _ = Plot_ROC_Curve(y_test, y_score, target_names, 
                    clf_name=clf_name, zoom_level=0.7)
+
+# Predict random images from test set
+ML_Predict_Random_Test_Images(clf, X_test, y_test, target_names, num_img=12)

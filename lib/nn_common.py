@@ -211,7 +211,7 @@ def Image_NN_Predict_One(model, X_val_reshape, target_names, verbose=1):
     X_val_rescale = X_val_reshape/255.
     y_pred = model.predict(X_val_rescale.reshape((-1, 150, 150, 3)), verbose=verbose)
     y_val_bool = np.argmax(y_pred)
-    #print(" > Predicted >", target_names[y_bool])
+    #print(" > Predicted >", target_names[y_val_bool])
     #print(" > all proba >", y_pred)
     #print()
     return target_names[y_val_bool], y_val_bool, y_pred[0]

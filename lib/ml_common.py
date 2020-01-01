@@ -52,10 +52,14 @@ def Vanilla_ML_Run_CV(clf_list, X, y, n_splits=5):
 
 
 def Predict_and_Report(clf, X_val, y_val, target_names):
-    y_pred = clf.predict(X_val)
-    clf_acc = accuracy_score(y_val, y_pred)
-    clf_report = classification_report(y_val, y_pred, target_names=target_names)
-    cf_matrix = confusion_matrix(y_val.argmax(axis=1), y_pred.argmax(axis=1))
+    y_pred = clf.predict_proba(X_val)
+    
+    y_val_bool = np.argmax(y_val, axis=1)
+    y_pred_bool = np.argmax(y_pred, axis=1)
+
+    clf_acc = accuracy_score(y_val_bool, y_pred_bool)
+    clf_report = classification_report(y_val_bool, y_pred_bool, target_names=target_names)
+    cf_matrix = confusion_matrix(y_val_bool, y_pred_bool)
     #print(clf_report)
     #print(cf_matrix)
     #print()
@@ -74,6 +78,32 @@ def Vanilla_ML_Predict(clf_list, X_val, y_val, target_names):
     print()
     return predict_list
    
+
+def ML_Predict_Random_Test_Images(clf, X_val, y_val, target_names, num_img=5):
+    print(" >> Predicting on randomly selected test images")
+   
+    num_disp_col = 3
+    num_disp_row = num_img//num_disp_col + (1 if num_img%num_disp_col else 0)
+    plt.figure(figsize=(20,7*num_disp_row))
+
+    random_idx = np.random.choice(range(len(X_val)), num_img, replace=False)
+
+    for count, idx in enumerate(random_idx, start=1):
+        X_val_selected = X_val[idx]
+        y_pred = clf.predict_proba(X_val_selected.reshape(1,-1))[0]
+
+        y_pred_bool = np.argmax(y_pred)
+        y_pred_label = target_names[y_pred_bool]
+
+        y_val_bool = np.argmax(y_val[idx])
+        y_val_label = target_names[y_val_bool]
+
+        plt.subplot(num_disp_row, num_disp_col, count)
+        y_pred_long_desc = "Predict: {} ({:.0%}), Actual: {}".format(y_pred_label, 
+                    y_pred[y_pred_bool], y_val_label)
+        plt.title(y_pred_long_desc, fontsize=14)
+        _ = plt.imshow(X_val_selected.reshape(150,150,3))
+
 
 def Show_Confusion_Matrix(cf_matrix, target_names, clf_name="Model's"):
     """ Print confusion matrix for specified classifier
@@ -139,8 +169,8 @@ def Compare_Multiple_PR_Curves(y_test, y_score, zoom_level=1.0):
         ap_score = average_precision_score(y_test, y_score[clf_name])
         plt.plot(recall, precision, label="{} (area: {:.2f})".format(clf_name, ap_score))
 
-    plt.xlabel('Precision')
-    plt.ylabel('Recall')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
     plt.title("Precision-Recall Curves of different Models")
     plt.legend(loc='best')
     plt.show()
