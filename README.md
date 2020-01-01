@@ -7,4 +7,5 @@ If you just want to explore quickly through this project, you can by doing the f
   * /data
   * /images
   * /lib
-* Launch 'this file' from Google Colab
+  * cavy_breed_clf_train_and_predict_abridged.ipynb
+* Launch 'cavy_breed_clf_train_and_predict_abridged.ipynb' from Google Colab
