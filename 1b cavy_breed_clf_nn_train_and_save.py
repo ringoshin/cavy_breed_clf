@@ -23,12 +23,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 #%matplotlib inline
 
-import tensorflow as tf
-
-config = tf.ConfigProto()
-config.gpu_options.allow_growth=True
-sess = tf.Session(config=config)
-
 # fix random seed for reproducibility
 seed = 128
 np.random.seed(seed)
@@ -55,7 +49,7 @@ model_0, history_0 = Image_CNN_Multilayer_Train(model_0,
                                      y_train,
                                      X_val.reshape(input_shape), 
                                      y_val, 
-                                     epochs=2,  # was 100
+                                     epochs=100,  # was 100
                                      batch_size=batch_size, 
                                      verbose=1)
 
@@ -77,7 +71,7 @@ model_1, history_1_1, history_1_2 = Image_CNN_From_InceptionV3_Train(model_1,
                                         y_train,
                                         X_val.reshape((input_shape)),
                                         y_val, 
-                                        epochs=2,   # was 100 
+                                        epochs=100,   # was 100 
                                         batch_size=batch_size, 
                                         verbose=1)
 
@@ -99,6 +93,6 @@ clf_report_1, cf_matrix_1, y_pred_1, y_bool_1 = Image_NN_Predict(model_1,
     
 
 # Save the trained models
-#Save_NN_Model_Data(model_0, history_0, 'cnn_multilayer_v1_epoch-100')
-#Save_NN_Model_Data(model_1, history_2, 'inceptionV3_tuned_freeze-230_sgd_v1_epoch-100')
+Save_NN_Model_Data(model_0, history_0, 'cnn_multilayer_v1_epoch-100')
+Save_NN_Model_Data(model_1, history_1_2, 'inceptionV3_tuned_freeze-230_sgd_v1_epoch-100')
 

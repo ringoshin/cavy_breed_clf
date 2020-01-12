@@ -34,6 +34,11 @@ import pickle
 from pathlib import Path
 import os
 
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth=True
+sess = tf.Session(config=config)
+
 
 def Create_Data_Generator(X_train, y_train, X_val, y_val, batch_size=32):
     train_datagen = ImageDataGenerator(rescale=1./255,

@@ -8,6 +8,7 @@ backcall==0.1.0
 bleach==3.1.0
 Brlapi==0.6.6
 certifi==2018.1.18
+cffi==1.13.2
 chardet==3.0.4
 command-not-found==0.3
 cryptography==2.3
@@ -38,7 +39,7 @@ jupyter==1.0.0
 jupyter-client==5.3.4
 jupyter-console==6.0.0
 jupyter-core==4.6.0
-Keras==2.2.5
+Keras==2.3.1
 Keras-Applications==1.0.8
 Keras-Preprocessing==1.1.0
 keyring==10.6.0
@@ -79,6 +80,7 @@ prompt-toolkit==2.0.10
 protobuf==3.11.1
 ptyprocess==0.6.0
 pycairo==1.16.2
+pycparser==2.19
 pycrypto==2.6.1
 pycups==1.9.73
 Pygments==2.4.2
@@ -111,12 +113,13 @@ six==1.12.0
 stevedore==1.31.0
 system-service==0.3
 systemd-python==234
-tensorboard==1.15.0
-tensorflow==1.15.0
-tensorflow-estimator==1.15.1
+tensorboard==1.14.0
+tensorflow-estimator==1.14.0
+tensorflow-gpu==1.14.0
 termcolor==1.1.0
 terminado==0.8.2
 testpath==0.4.2
+testresources==2.0.1
 tornado==6.0.3
 traitlets==4.3.3
 typed-ast==1.4.0
